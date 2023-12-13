@@ -9,10 +9,10 @@ deepspeed llava/train/train_mem.py \
     --deepspeed ./scripts/zero3.json \
     --model_name_or_path /ai/test/pretrained_weights/vicuna-13b-v1.5 \
     --version v1 \
-    --data_path /ai/test/code/LLaVA/scripts/video_act.json \
+    --data_path /ai/test/code/LLaVA/scripts/ivg.json \
     --image_folder /ai/test/data/ \
     --vision_tower /ai/test/pretrained_weights/clip_weights/clip-vit-large-patch14-336 \
-    --vision_tower_name video \
+    --vision_tower_name multiple \
     --mm_projector_type mlp2x_gelu \
     --mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
@@ -20,9 +20,9 @@ deepspeed llava/train/train_mem.py \
     --image_aspect_ratio pad \
     --group_by_modality_length False \
     --bf16 True \
-    --output_dir ./checkpoints/1128_video/llava-v1.5-13b \
+    --output_dir ./checkpoints/1206_video/llava-v1.5-13b \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 8 \
+    --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 1 \
     --evaluation_strategy "no" \

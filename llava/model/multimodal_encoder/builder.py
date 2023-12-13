@@ -1,5 +1,5 @@
 import os
-from .clip_encoder import CLIPVisionTower, MetaTransformer, VideoProjector
+from .clip_encoder import CLIPVisionTower, MetaTransformer, VideoProjector, UniTower
 
 
 def build_vision_tower(vision_tower_cfg, **kwargs):
@@ -14,8 +14,8 @@ def build_vision_tower(vision_tower_cfg, **kwargs):
         return MetaTransformer(vision_tower, args=vision_tower_cfg, **kwargs)
     elif vision_tower_name == 'video' and is_absolute_path_exists:
         return VideoProjector(vision_tower, args=vision_tower_cfg, **kwargs)
-    if vision_tower_name == 'mulitple'and is_absolute_path_exists:
-        return 0
+    if vision_tower_name == 'multiple' and is_absolute_path_exists:
+        return UniTower(vision_tower, args=vision_tower_cfg, **kwargs)
 
     #if is_absolute_path_exists or vision_tower.startswith("openai") or vision_tower.startswith("laion"):
         # return MetaTransformer(vision_tower, args=vision_tower_cfg, **kwargs)

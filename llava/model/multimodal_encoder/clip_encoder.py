@@ -10,6 +10,8 @@ import sys
 sys.path.append('/ai/test/code/LLaVA/llava/model/multimodal_encoder')
 from Data2Seq import Data2Seq
 from timm.models.vision_transformer import Block
+import torch.nn.init as init
+
 
 class CLIPVisionTower(nn.Module):
     def __init__(self, vision_tower, args, delay_load=False):
@@ -47,11 +49,13 @@ class CLIPVisionTower(nn.Module):
     def forward(self, images):
         if type(images) is list:
             image_features = []
+            print(images[0].shape, 'list')
             for image in images:
                 image_forward_out = self.vision_tower(image.to(device=self.device, dtype=self.dtype).unsqueeze(0), output_hidden_states=True)
                 image_feature = self.feature_select(image_forward_out).to(image.dtype)
                 image_features.append(image_feature)
         else:
+            print(images.shape, 'not list')
             image_forward_outs = self.vision_tower(images.to(device=self.device, dtype=self.dtype), output_hidden_states=True)
             image_features = self.feature_select(image_forward_outs).to(images.dtype)
 
@@ -241,3 +245,121 @@ class VideoProjector(nn.Module):
     @property
     def num_patches(self):
         return (self.config.image_size // self.config.patch_size) ** 2
+
+
+import pdb
+import os
+local_rank = int(os.environ["LOCAL_RANK"])
+
+
+class UniTower(nn.Module):
+    def __init__(self, vision_tower, args, delay_load=False):
+        super().__init__()
+
+        self.vision_tower_name = vision_tower
+
+        self.is_loaded = False
+
+        # for image
+        self.select_layer = args.mm_vision_select_layer
+        self.select_feature = getattr(args, 'mm_vision_select_feature', 'patch')
+
+        self.load_model()
+
+    def load_model(self):
+
+        # load image processor and model
+        self.image_processor = CLIPImageProcessor.from_pretrained(self.vision_tower_name)
+        self.image_tower = CLIPVisionModel.from_pretrained(self.vision_tower_name)
+        self.image_tower.requires_grad_(False)
+
+        # load video processor and model
+        # modules = [nn.Linear(2816, 5120)]
+        # modules.append(nn.ReLU())
+        # modules.append(nn.Linear(5120, 5120))
+        # modules.append(nn.ReLU())
+        # modules.append(nn.Linear(5120, 1024))
+        # self.video_tower = nn.Sequential(*modules)
+        # init.kaiming_uniform_(self.video_tower[0].weight, a=0, mode='fan_in', nonlinearity='relu')
+        # init.kaiming_uniform_(self.video_tower[2].weight, a=0, mode='fan_in', nonlinearity='relu')
+        # init.kaiming_uniform_(self.video_tower[4].weight, a=0, mode='fan_in', nonlinearity='relu')
+        # self.video_tower = nn.Linear(2816, 1024)
+        # self.video_tower.requires_grad_(True)
+        self.video_tower = nn.Identity()
+
+        # load pointcloud processor and model
+
+        self.is_loaded = True
+
+    def feature_select(self, image_forward_outs):
+        image_features = image_forward_outs.hidden_states[self.select_layer]
+        if self.select_feature == 'patch':
+            image_features = image_features[:, 1:]
+        elif self.select_feature == 'cls_patch':
+            image_features = image_features
+        else:
+            raise ValueError(f'Unexpected select feature: {self.select_feature}')
+        return image_features
+
+    def forward(self, data, mode):
+        if mode == 'image':
+            images = data
+            if type(images) is list:
+                image_features = []
+                for image in images:
+                    image_forward_out = self.image_tower(image.to(device=self.device, dtype=self.dtype).unsqueeze(0),
+                                                          output_hidden_states=True)
+                    image_feature = self.feature_select(image_forward_out).to(image.dtype)
+                    image_features.append(image_feature)
+            else:
+                image_forward_outs = self.image_tower(images.to(device=self.device, dtype=self.dtype),
+                                                       output_hidden_states=True)
+                image_features = self.feature_select(image_forward_outs).to(images.dtype)
+
+            return image_features
+
+        elif mode == 'video':
+            print('encoding video now', local_rank)
+            videos = data
+            if type(videos) is list:
+                video_features = []
+                for video in videos:
+                    video = video.to(device=self.video_device, dtype=self.video_dtype)
+                    # Project to the hidden dim
+                    output = self.video_tower(video)
+
+                    video_features.append(output)
+            else:
+                videos = videos.to(device=self.device, dtype=self.dtype)
+
+                #
+                # if local_rank == 0:
+                #     pdb.set_trace()
+                video_features = self.video_tower(videos)
+
+            print('encoding video finished', local_rank)
+            return video_features
+
+        elif mode == 'ptcd':
+            return 0
+
+    @property
+    def dtype(self):
+        return self.image_tower.dtype
+
+    @property
+    def device(self):
+        return self.image_tower.device
+
+    @property
+    def video_dtype(self):
+        return self.video_tower[0].weight.dtype
+
+    @property
+    def video_device(self):
+        return self.video_tower[0].weight.device
+
+    @property
+    def hidden_size(self):
+        return 1024
+

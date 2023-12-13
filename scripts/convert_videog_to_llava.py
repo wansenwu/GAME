@@ -18,8 +18,23 @@ def is_value_present(dict_list, value):
     return 0, False
 
 
+def merge_json(file1, file2, output_file):
+    with open(file1, 'r', encoding='utf-8') as f:
+        data1 = json.load(f)
+    with open(file2, 'r', encoding='utf-8') as f:
+        data2 = json.load(f)
+
+    data1.extend(data2)  # 使用update方法将第二个JSON文件的内容合并到第一个文件中
+
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(data1, f, ensure_ascii=False, indent=4)  # 将合并后的数据写入输出文件
+
+
 if __name__ == '__main__':
-    # load refcoco data
+
+    # 调用函数并指定要合并的两个JSON文件以及输出文件的路径
+    # merge_json('/ai/test/code/LLaVA/scripts/video_act.json', '/ai/test/code/LLaVA/scripts/vg_ft_cfr_new.json', 'ivg.json')
+
     root_dir = '/ai/test/data/VideoG/'
 
     datasets = ['TACoS', 'Charades', 'ActivityNet']

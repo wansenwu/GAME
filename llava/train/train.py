@@ -718,7 +718,7 @@ class LazySupervisedDataset(Dataset):
 
             video_feature = torch.from_numpy(v_feat).unsqueeze(0).transpose(1, 2)
             # pooling for equal length
-            adaptive_avg_pool = nn.AdaptiveAvgPool1d(output_size=50)
+            adaptive_avg_pool = nn.AdaptiveAvgPool1d(output_size=576)
             pool_feature = adaptive_avg_pool(video_feature)
             # transpose back
             image = pool_feature.transpose(1, 2)
@@ -726,13 +726,15 @@ class LazySupervisedDataset(Dataset):
             sources = preprocess_multimodal(
                 copy.deepcopy([e["conversations"] for e in sources]),
                 self.data_args)
-
+        elif 'ptcd' in sources[0]:
+            print('kk')
         else:
             sources = copy.deepcopy([e["conversations"] for e in sources])
         data_dict = preprocess(
             sources,
             self.tokenizer,
-            has_image=('image' in self.list_data_dict[i] or 'video' in self.list_data_dict[i]))
+            has_image=('image' in self.list_data_dict[i] or 'video' in self.list_data_dict[i]) or 'ptcd' in self.list_data_dict[i])
+
         if isinstance(i, int):
             data_dict = dict(input_ids=data_dict["input_ids"][0],
                              labels=data_dict["labels"][0])
@@ -921,9 +923,9 @@ def train():
         vision_tower = model.get_vision_tower()
         vision_tower.to(dtype=torch.bfloat16 if training_args.bf16 else torch.float16, device=training_args.device)
 
-        if model_args.vision_tower_name == 'video':
-            vision_tower.proj_layer.to(dtype=torch.bfloat16 if training_args.bf16 else torch.float16, device=training_args.device)
-        # for meta
+        # if model_args.vision_tower_name == 'video':
+        #     vision_tower.proj_layer.to(dtype=torch.bfloat16 if training_args.bf16 else torch.float16, device=training_args.device)
+        # # for meta
         #vision_tower.image_processor.to(dtype=torch.bfloat16 if training_args.bf16 else torch.float16, device=training_args.device)
         # add args to control the model switch
 
