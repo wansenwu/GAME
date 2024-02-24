@@ -20,10 +20,11 @@ import torch
 import torch.nn as nn
 
 from .multimodal_encoder.builder import build_vision_tower
-from .multimodal_projector.builder import build_vision_projector
+from .multimodal_projector.builder import build_vision_projector, build_video_projector
 
 from llava.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 # import ipdb
+
 
 class LlavaMetaModel:
 
@@ -33,6 +34,7 @@ class LlavaMetaModel:
         if hasattr(config, "mm_vision_tower"):
             self.vision_tower = build_vision_tower(config, delay_load=True)
             self.mm_projector = build_vision_projector(config)
+            self.video_projector = build_video_projector(config)
 
     def get_vision_tower(self):
         vision_tower = getattr(self, 'vision_tower', None)
@@ -45,6 +47,7 @@ class LlavaMetaModel:
         mm_vision_select_layer = model_args.mm_vision_select_layer
         mm_vision_select_feature = model_args.mm_vision_select_feature
         pretrain_mm_mlp_adapter = model_args.pretrain_mm_mlp_adapter
+        pretrain_video_projector = model_args.pretrain_video_projector
 
         self.config.mm_vision_tower = vision_tower
 
@@ -62,6 +65,7 @@ class LlavaMetaModel:
         self.config.mm_vision_select_feature = mm_vision_select_feature
 
         self.mm_projector = build_vision_projector(self.config)
+        self.video_projector = build_video_projector(self.config)
 
         if pretrain_mm_mlp_adapter is not None:
             mm_projector_weights = torch.load(pretrain_mm_mlp_adapter, map_location='cpu')
@@ -69,6 +73,20 @@ class LlavaMetaModel:
                 return {k.split(keyword + '.')[1]: v for k, v in weights.items() if keyword in k}
 
             self.mm_projector.load_state_dict(get_w(mm_projector_weights, 'mm_projector'))
+
+        if pretrain_video_projector is not None:
+            video_projector_weights = torch.load(pretrain_video_projector, map_location='cpu')
+            def get_w(weights, keyword):
+                return {k.split(keyword + '.')[1]: v for k, v in weights.items() if keyword in k}
+            self.video_projector.load_state_dict(get_w(video_projector_weights, 'video_projector'))
+
+
+def check_first_dimension_same(tensor_list):
+    if all(torch.is_tensor(tensor) for tensor in tensor_list):
+        first_dimensions = [tensor.size(0) for tensor in tensor_list]
+        return torch.tensor(first_dimensions).unique().size(0) == 1
+    else:
+        return False
 
 
 class LlavaMetaForCausalLM(ABC):
@@ -81,9 +99,24 @@ class LlavaMetaForCausalLM(ABC):
         return self.get_model().get_vision_tower()
 
     def encode_images(self, images):
-        image_features = self.get_model().get_vision_tower()(images, mode='image')
+        image_features = self.get_model().get_vision_tower()(images)
         image_features = self.get_model().mm_projector(image_features)
         return image_features
+
+    def encode_videos(self, videos):
+
+        # import os
+        # local_rank = int(os.environ["LOCAL_RANK"])
+        #
+        # print('encode videos \n')
+        # print('data:',local_rank, videos.dtype, videos.device, )
+        # print('\n')
+        # print('net:',local_rank, self.get_model().video_projector[0].weight.dtype,
+        #       self.get_model().video_projector[0].weight.device, )
+        videos_features = self.get_model().video_projector(videos)
+        videos_features = self.get_model().mm_projector(videos_features)
+        # print('encode videos pass \n')
+        return videos_features
 
     def prepare_inputs_labels_for_multimodal(
         self, input_ids, attention_mask, past_key_values, labels, images
@@ -94,70 +127,47 @@ class LlavaMetaForCausalLM(ABC):
                 attention_mask = torch.ones((attention_mask.shape[0], past_key_values[-1][-1].shape[-2] + 1), dtype=attention_mask.dtype, device=attention_mask.device)
             return input_ids, attention_mask, past_key_values, None, labels
 
-        # ipdb.set_trace()
         if type(images) is list or images.ndim == 5:
 
-
-            def compare_dims(elem):
-                if elem.shape == (1, 576, 2816):
-                    return 0
-                elif elem.shape == (3, 336, 336):
-                    return 1
-                else:
-                    return 2
-
-            # 按照维度排序
-            images.sort(key=compare_dims)
-
-            import os
-            local_rank = int(os.environ["LOCAL_RANK"])
-
-            print('length of images', len(images))
-            for item in images:
-                print(item.shape, local_rank)
-            # print('list')
-            # Old for all image
             # concat_images = torch.cat([image for image in images], dim=0)
             # image_features = self.encode_images(concat_images)
             # split_sizes = [image.shape[0] for image in images]
             # image_features = torch.split(image_features, split_sizes, dim=0)
             # image_features = [x.flatten(0, 1) for x in image_features]
-            # New for three modality
+            # print('length of images', len(images))
+            for item in images:
+                print(item.shape)
+            # if check_first_dimension_same(images):
+            #     print('same modality samples in batch ')
+
             indices = list(range(len(images)))
             processed_data = [None] * len(indices)
 
             for index in indices:
                 d = images[index]
                 if d.shape == (3, 336, 336):
-                    processed_data[index] = self.get_model().get_vision_tower()(d.unsqueeze(0), mode='image')
-                    print('\n encoded image succeed, feature shape:', processed_data[index].shape)
+                    processed_data[index] = self.encode_images(d.unsqueeze(0))
+                    # processed_data[index] = torch.zeros([1, 576, 5120], dtype=torch.bfloat16).cuda()
+                    # print('\n encoded image succeed, feature shape:', processed_data[index].shape)
                 elif d.shape == (1, 576, 2816):
-                    processed_data[index] = self.get_model().get_vision_tower()(d, mode='video')
-                    print('\n encoded video feature', processed_data[index].shape)
+                    processed_data[index] = self.encode_videos(d)
+                    # processed_data[index] = torch.zeros([1, 576, 5120], dtype=torch.bfloat16).cuda()
+                    # print('\n encoded video feature', processed_data[index].shape)
                 elif d.shape == (1, 20, 400):
                     processed_data[index] = self.get_model().get_vision_tower()(d, mode='ptcd')
                 else:
                     raise ValueError("Invalid data shape:", d.shape)
-
+            # print('encode finished')
             image_features = torch.stack(processed_data).squeeze(1)
-            image_features = self.get_model().mm_projector(image_features)
-            #
-            # # 根据索引列表将处理后的数据进行拼接
-            # final_data = np.concatenate(processed_data, axis=2)
+            # print('stack finished')
         else:
-            # b x 3 x 336 x336
-            processed_data = []
-            for image in images:
-                if image.shape == (3, 336, 336):
-                    image_feat = self.get_model().get_vision_tower()(image.unsqueeze(0), mode='image')
-                elif image.shape == (1, 576, 2816):
-                    image_feat = self.get_model().get_vision_tower()(image, mode='video')
-                processed_data.append(image_feat)
+            if images.shape[1] == 3:
+                image_features = self.encode_images(images)
+            elif images.shape[1] == 1 and len(images.shape) == 4:
+                image_features = self.encode_videos(images.squeeze(1))
+            elif images.shape[-1] == 2816 and len(images.shape) == 3:
+                image_features = self.encode_videos(images)
 
-            image_features = torch.stack(processed_data).squeeze(1)
-            image_features = self.get_model().mm_projector(image_features)
-            # image_features = self.encode_images(images)
-        # print('line 105 size:', image_features.shape)
         new_input_embeds = []
         new_labels = [] if labels is not None else None
         cur_image_idx = 0
@@ -250,7 +260,7 @@ class LlavaMetaForCausalLM(ABC):
         else:
             new_input_embeds = torch.stack(new_input_embeds, dim=0)
             if labels is not None:
-                new_labels  = torch.stack(new_labels, dim=0)
+                new_labels = torch.stack(new_labels, dim=0)
 
             if attention_mask is not None:
                 new_attn_mask_pad_left = torch.full((attention_mask.shape[0], new_input_embeds.shape[1] - input_ids.shape[1]), True, dtype=attention_mask.dtype, device=attention_mask.device)

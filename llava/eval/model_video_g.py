@@ -146,15 +146,6 @@ def eval_model(args):
         keywords = [stop_str]
         stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
 
-        def check_nan_parameters(model):
-            for name, param in model.named_parameters():
-                if torch.isnan(param).any():
-                    print(f'Parameter {name} has NaN values at index {torch.where(torch.isnan(param))}.')
-
-        # 假设已经定义了一个神经网络模型model
-        check_nan_parameters(model)
-
-        model.model.vision_tower.proj_layer.requires_grad_(False)
         with torch.inference_mode():
             output_ids = model.generate(
                 input_ids,

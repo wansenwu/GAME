@@ -129,6 +129,34 @@ class LengthGroupedSampler(Sampler):
         return iter(indices)
 
 
+import random
+class ImageVideoSampler(Sampler):
+
+    def __init__(self, data_source):
+        self.image_indices = [i for i, sample in enumerate(data_source) if sample['modality'] == 'image']
+        self.video_indices = [i for i, sample in enumerate(data_source) if sample['modality'] == 'video']
+        self.num_samples = min(len(self.image_indices), len(self.video_indices))
+
+    def __iter__(self):
+        if len(self.image_indices) > len(self.video_indices):
+            image_subset = random.sample(self.image_indices, self.num_samples)
+            video_subset = self.video_indices * (self.num_samples // len(self.video_indices)) + random.sample(
+                self.video_indices, self.num_samples % len(self.video_indices))
+        else:
+            video_subset = random.sample(self.video_indices, self.num_samples)
+            image_subset = self.image_indices * (self.num_samples // len(self.image_indices)) + random.sample(
+                self.image_indices, self.num_samples % len(self.image_indices))
+
+        samples = []
+        for i in range(self.num_samples):
+            samples.append(image_subset[i])
+            samples.append(video_subset[i])
+        return iter(samples)
+
+    def __len__(self):
+        return 2 * self.num_samples
+
+
 class LLaVATrainer(Trainer):
 
     def _get_train_sampler(self) -> Optional[torch.utils.data.Sampler]:
@@ -144,6 +172,11 @@ class LLaVATrainer(Trainer):
                 lengths=lengths,
                 group_by_modality=True,
             )
+        elif self.args.modality_sampler:
+            return ImageVideoSampler(
+                data_source=self.train_dataset.list_data_dict
+            )
+
         else:
             return super()._get_train_sampler()
 

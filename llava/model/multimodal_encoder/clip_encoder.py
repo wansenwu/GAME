@@ -49,13 +49,11 @@ class CLIPVisionTower(nn.Module):
     def forward(self, images):
         if type(images) is list:
             image_features = []
-            print(images[0].shape, 'list')
             for image in images:
                 image_forward_out = self.vision_tower(image.to(device=self.device, dtype=self.dtype).unsqueeze(0), output_hidden_states=True)
                 image_feature = self.feature_select(image_forward_out).to(image.dtype)
                 image_features.append(image_feature)
         else:
-            print(images.shape, 'not list')
             image_forward_outs = self.vision_tower(images.to(device=self.device, dtype=self.dtype), output_hidden_states=True)
             image_features = self.feature_select(image_forward_outs).to(images.dtype)
 
@@ -248,9 +246,9 @@ class VideoProjector(nn.Module):
 
 
 import pdb
-import os
-local_rank = int(os.environ["LOCAL_RANK"])
-
+# import os
+# local_rank = int(os.environ["LOCAL_RANK"])
+#
 
 class UniTower(nn.Module):
     def __init__(self, vision_tower, args, delay_load=False):
@@ -274,18 +272,18 @@ class UniTower(nn.Module):
         self.image_tower.requires_grad_(False)
 
         # load video processor and model
-        # modules = [nn.Linear(2816, 5120)]
-        # modules.append(nn.ReLU())
-        # modules.append(nn.Linear(5120, 5120))
-        # modules.append(nn.ReLU())
-        # modules.append(nn.Linear(5120, 1024))
-        # self.video_tower = nn.Sequential(*modules)
-        # init.kaiming_uniform_(self.video_tower[0].weight, a=0, mode='fan_in', nonlinearity='relu')
-        # init.kaiming_uniform_(self.video_tower[2].weight, a=0, mode='fan_in', nonlinearity='relu')
-        # init.kaiming_uniform_(self.video_tower[4].weight, a=0, mode='fan_in', nonlinearity='relu')
+        modules = [nn.Linear(2816, 5120)]
+        modules.append(nn.ReLU())
+        modules.append(nn.Linear(5120, 5120))
+        modules.append(nn.ReLU())
+        modules.append(nn.Linear(5120, 1024))
+        self.video_tower = nn.Sequential(*modules)
+        init.kaiming_uniform_(self.video_tower[0].weight, a=0, mode='fan_in', nonlinearity='relu')
+        init.kaiming_uniform_(self.video_tower[2].weight, a=0, mode='fan_in', nonlinearity='relu')
+        init.kaiming_uniform_(self.video_tower[4].weight, a=0, mode='fan_in', nonlinearity='relu')
         # self.video_tower = nn.Linear(2816, 1024)
         # self.video_tower.requires_grad_(True)
-        self.video_tower = nn.Identity()
+        # self.video_tower = nn.Identity()
 
         # load pointcloud processor and model
 
@@ -302,6 +300,9 @@ class UniTower(nn.Module):
         return image_features
 
     def forward(self, data, mode):
+        import torch
+        torch.autograd.set_detect_anomaly(True)
+
         if mode == 'image':
             images = data
             if type(images) is list:
@@ -319,7 +320,7 @@ class UniTower(nn.Module):
             return image_features
 
         elif mode == 'video':
-            print('encoding video now', local_rank)
+            print('encoding video now')
             videos = data
             if type(videos) is list:
                 video_features = []
@@ -337,7 +338,7 @@ class UniTower(nn.Module):
                 #     pdb.set_trace()
                 video_features = self.video_tower(videos)
 
-            print('encoding video finished', local_rank)
+            print('encoding video finished')
             return video_features
 
         elif mode == 'ptcd':

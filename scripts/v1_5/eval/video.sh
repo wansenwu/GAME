@@ -6,33 +6,35 @@ IFS=',' read -ra GPULIST <<< "$gpu_list"
 
 CHUNKS=${#GPULIST[@]}
 
-model_name="1128_video"
+model_name="1219_video_image"
 
-datasets=("TACoS" "Charades")
+datasets=("TACoS")
+
+#datasets=("TACoS" "Charades")
 
 #datasets=("TACoS" "ActivityNet" "Charades")
 
 for split in "${datasets[@]}"
 do
-  for IDX in $(seq 0 $((CHUNKS-1)));
-    do
-    CUDA_VISIBLE_DEVICES=${GPULIST[$IDX]} python -m llava.eval.model_video_g \
-        --model-path /ai/test/code/LLaVA/checkpoints/${model_name}/llava-v1.5-13b \
-        --answers-file ./playground/data/eval/vg/answers_${model_name}/$split/${CHUNKS}_${IDX}.jsonl \
-        --num-chunks $CHUNKS \
-        --chunk-idx $IDX \
-        --split $split \
-        --temperature 0 \
-        --conv-mode vicuna_v1 &
-    done
-  wait
-    output_file=./playground/data/eval/vg/answers_${model_name}/$split/merge.jsonl
+#  for IDX in $(seq 0 $((CHUNKS-1)));
+#    do
+#    CUDA_VISIBLE_DEVICES=${GPULIST[$IDX]} python -m llava.eval.model_video_g \
+#        --model-path /ai/test/code/LLaVA/checkpoints/${model_name}/llava-v1.5-7b \
+#        --answers-file ./playground/data/eval/video_g/answers_${model_name}/$split/${CHUNKS}_${IDX}.jsonl \
+#        --num-chunks $CHUNKS \
+#        --chunk-idx $IDX \
+#        --split $split \
+#        --temperature 0 \
+#        --conv-mode vicuna_v1 &
+#    done
+#  wait
+    output_file=./playground/data/eval/video_g/answers_${model_name}/$split/merge.jsonl
     # Clear out the output file if it exists.
     > "$output_file"
 
     # Loop through the indices and concatenate each file.
     for IDX in $(seq 0 $((CHUNKS-1))); do
-        cat ./playground/data/eval/vg/answers_${model_name}/$split/${CHUNKS}_${IDX}.jsonl >> "$output_file"
+        cat ./playground/data/eval/video_g/answers_${model_name}/$split/${CHUNKS}_${IDX}.jsonl >> "$output_file"
     done
 done
 

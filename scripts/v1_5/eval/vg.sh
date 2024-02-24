@@ -6,7 +6,7 @@ IFS=',' read -ra GPULIST <<< "$gpu_list"
 
 CHUNKS=${#GPULIST[@]}
 
-model_name="1030"
+model_name="1219_video_image"
 
 #datasets=("unc/unc_val"
 #         "unc/unc_testA"
@@ -27,7 +27,7 @@ do
   for IDX in $(seq 0 $((CHUNKS-1)));
     do
     CUDA_VISIBLE_DEVICES=${GPULIST[$IDX]} python -m llava.eval.model_vg \
-        --model-path /ai/test/code/LLaVA/checkpoints/${model_name}/llava-v1.5-13b \
+        --model-path /ai/test/code/LLaVA/checkpoints/${model_name}/llava-v1.5-7b \
         --answers-file ./playground/data/eval/vg/answers_${model_name}/$split/${CHUNKS}_${IDX}.jsonl \
         --num-chunks $CHUNKS \
         --chunk-idx $IDX \

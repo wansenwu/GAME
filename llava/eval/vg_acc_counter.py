@@ -16,7 +16,7 @@ for dataset in datasets:
     i = 0
     # 打开 JSONL 文件
     path_new = '/ai/test/code/LLaVA/playground/data/eval/vg'
-    with open(path_new + '/answers_reg/{}/merge.jsonl'.format(dataset), 'r') as file:
+    with open(path_new + '/answers_1219_video_image/{}/merge.jsonl'.format(dataset), 'r') as file:
         # 逐行读取文件内容
         for k, line in enumerate(file):
             # 解析 JSON 对象

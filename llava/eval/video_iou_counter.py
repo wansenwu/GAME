@@ -5,7 +5,7 @@ datasets = ['TACoS', 'Charades']
 
 
 for dataset in datasets:
-    root_dir = '/ai/test/code/LLaVA/playground/data/eval/vg/answers_1125_video_5_train/{}/merge.jsonl'.format(dataset)
+    root_dir = '/ai/test/code/LLaVA/playground/data/eval/video_g/answers_1219_video_image/{}/merge.jsonl'.format(dataset)
     pred_windows = []
     gt_windows = []
     with open(root_dir, 'r') as file:
