@@ -300,8 +300,6 @@ class UniTower(nn.Module):
         return image_features
 
     def forward(self, data, mode):
-        import torch
-        torch.autograd.set_detect_anomaly(True)
 
         if mode == 'image':
             images = data

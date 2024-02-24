@@ -135,8 +135,8 @@ class LlavaMetaForCausalLM(ABC):
             # image_features = torch.split(image_features, split_sizes, dim=0)
             # image_features = [x.flatten(0, 1) for x in image_features]
             # print('length of images', len(images))
-            for item in images:
-                print(item.shape)
+            # for item in images:
+            #     print(item.shape)
             # if check_first_dimension_same(images):
             #     print('same modality samples in batch ')
 

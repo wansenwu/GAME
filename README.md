@@ -42,17 +42,23 @@ The [llava-v1.5-7b](https://huggingface.co/liuhaotian/llava-v1.5-7b) and [13b](h
 
 **For single image grounding:**
 
+set --data_path as path/to/vg_ft_cfr_new.json
+
 ```
 bash ./LLaVA/scripts/v1_5/finetune.sh
 ```
 
 **For single video grounding:**
 
+set --data_path as path/to/video_act.json
+
 ```
 bash ./LLaVA/scripts/v1_5/finetune.sh
 ```
 
 **For joint image+video grounding:**
+
+set --data_path as path/to/ivg.json
 
 ```
 bash ./LLaVA/scripts/v1_5/finetune.sh

@@ -8,7 +8,7 @@
 # vicuna-13b-v1.5
 #    --lora_enable True \
 deepspeed llava/train/train_mem.py \
-    --deepspeed ./scripts/zero1.json \
+    --deepspeed ./scripts/zero3.json \
     --model_name_or_path /ai/test/pretrained_weights/vicuna-7b \
     --version v1 \
     --data_path /ai/test/code/LLaVA/scripts/vg_ft_cfr_new.json \
