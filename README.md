@@ -14,7 +14,7 @@
    pip install -r requirements.txt
    ```
 
-### Dataset and model weights
+### Dataset and weights
 
 Visual Grounding, Video Grounding and Visual+Video finetune data
 
@@ -32,9 +32,15 @@ referit dataset：https://drive.google.com/drive/folders/1-faf4GiPBTwzEItdphhjlI
 
 It is necessary to download all the raw images, and the paths in the finetune data need to match the paths of the raw images in order to run properly.
 
-#### Model weights
+#### LLM weights
 
-The [llava-v1.5-7b](https://huggingface.co/liuhaotian/llava-v1.5-7b) and [13b](https://huggingface.co/liuhaotian/llava-v1.5-13b) weights are used.
+The [llava-v1.5-7b](https://huggingface.co/liuhaotian/llava-v1.5-7b) and [13b](https://huggingface.co/liuhaotian/llava-v1.5-13b) weights are used. 
+
+#### Projector weights
+
+[Vicuna-13B-v1.5](https://huggingface.co/liuhaotian/llava-v1.5-mlp2x-336px-pretrain-vicuna-13b-v1.5)
+
+[Vicuna-7B-v1.5](https://huggingface.co/liuhaotian/llava-v1.5-mlp2x-336px-pretrain-vicuna-7b-v1.5)
 
 ### Training and Evaluation
 
@@ -42,7 +48,14 @@ The [llava-v1.5-7b](https://huggingface.co/liuhaotian/llava-v1.5-7b) and [13b](h
 
 **For single image grounding:**
 
-set --data_path as path/to/vg_ft_cfr_new.json
+param settings in **finetune.sh**
+
+```
+--deepspeed ./scripts/zero3.json
+--data_path  path/to/vg_ft_cfr_new.json
+```
+
+Then, run the script:
 
 ```
 bash ./LLaVA/scripts/v1_5/finetune.sh
@@ -50,7 +63,14 @@ bash ./LLaVA/scripts/v1_5/finetune.sh
 
 **For single video grounding:**
 
-set --data_path as path/to/video_act.json
+param settings in **finetune.sh**
+
+```
+--deepspeed ./scripts/zero3.json
+--data_path path/to/video_act.json
+```
+
+Then, run the script:
 
 ```
 bash ./LLaVA/scripts/v1_5/finetune.sh
@@ -58,7 +78,14 @@ bash ./LLaVA/scripts/v1_5/finetune.sh
 
 **For joint image+video grounding:**
 
-set --data_path as path/to/ivg.json
+param settings in **finetune.sh**
+
+```
+--deepspeed ./scripts/zero1.json
+--data_path path/to/ivg.json
+```
+
+Then, run the script:
 
 ```
 bash ./LLaVA/scripts/v1_5/finetune.sh

@@ -8,10 +8,10 @@
 # vicuna-13b-v1.5
 #    --lora_enable True \
 deepspeed llava/train/train_mem.py \
-    --deepspeed ./scripts/zero3.json \
+    --deepspeed ./scripts/zero1.json \
     --model_name_or_path /ai/test/pretrained_weights/vicuna-7b \
     --version v1 \
-    --data_path /ai/test/code/LLaVA/scripts/vg_ft_cfr_new.json \
+    --data_path /ai/test/code/LLaVA/scripts/ivg.json \
     --image_folder /ai/test/data/ \
     --vision_tower /ai/test/pretrained_weights/clip_weights/clip-vit-large-patch14-336 \
     --vision_tower_name clip \
